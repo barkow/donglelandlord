@@ -1,0 +1,13 @@
+[Unit]
+Description=USB Dongle Supervision
+#Requires=avahi-daemon.service
+#After=avahi-daemon.service
+[Service]
+ExecStartPre=/bin/sh -c 'logger Start DongleLandlord'
+ExecStart=/home/debian/donglelandlord/usbDongleService.py
+WorkingDirectory=/home/debian/donglelandlord
+Type=idle
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

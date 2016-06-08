@@ -1,3 +1,4 @@
+#!/usr/bin/python3.2
 import pyudev
 import pprint
 import time
