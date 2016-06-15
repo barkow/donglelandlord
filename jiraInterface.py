@@ -30,13 +30,13 @@ class jiraDongle():
 		return data['fields']['status']['name']
 
 	def getUsbAddress(self):
-		req = urllib.request.Request(url=self._jiraUrl+'issue/{}?fields=description'.format(self.jiraId), headers={"Content-Type":"application/json"})
+		req = urllib.request.Request(url=self._jiraUrl+'issue/{}?fields=environment'.format(self.jiraId), headers={"Content-Type":"application/json"})
 		userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
 		req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
 		resp =  urllib.request.urlopen(req)
 		body = resp.read()
 		data = json.loads(body.decode())
-		return data['fields']['description'].replace("USBADDRESS:","")
+		return data['fields']['environment'].replace("USBADDRESS:","")
 
 	def _sendTransitionRequest(self, transitionId):
 		try:
@@ -93,7 +93,7 @@ class jiraServer():
 		pass
 
 	def getDongle(self, usbAddress):
-		req = urllib.request.Request(url=self._jiraUrl+'search',  data = json.dumps({'jql': "project = USBDONGLE AND description ~ USBADDRESS:{}".format(usbAddress), 'fields': ["key"]}).encode(), headers={"Content-Type":"application/json"})
+		req = urllib.request.Request(url=self._jiraUrl+'search',  data = json.dumps({'jql': "project = USBDONGLE AND environment ~ USBADDRESS:{}".format(usbAddress), 'fields': ["key"]}).encode(), headers={"Content-Type":"application/json"})
 		userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
 		req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
 		resp =  urllib.request.urlopen(req)
