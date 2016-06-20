@@ -5,6 +5,7 @@ import ssl
 import base64
 import logging
 import configparser
+import sys
 
 configfile = "usbDongleLandlord.conf"
 
@@ -96,12 +97,19 @@ class jiraServer():
 		req = urllib.request.Request(url=self._jiraUrl+'search',  data = json.dumps({'jql': "project = USBDONGLE AND environment ~ USBADDRESS:{}".format(usbAddress), 'fields': ["key"]}).encode(), headers={"Content-Type":"application/json"})
 		userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
 		req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
-		resp =  urllib.request.urlopen(req)
-		body = resp.read()
-		data = json.loads(body.decode())
-		if data['total'] == 1:
-			return jiraDongle(data['issues'][0]['key'])
-		else:
+		try:
+			resp =  urllib.request.urlopen(req)
+			body = resp.read()
+			data = json.loads(body.decode())
+			if data['total'] == 1:
+				return jiraDongle(data['issues'][0]['key'])
+			else:
+				return None
+		except urllib.error.HTTPError as e:
+			logging.warning(e.reason)
+		except:
+			logging.warning("Error reading from jira")
+			logging.warning(sys.exc_info()[0])
 			return None
 
 
