@@ -5,6 +5,7 @@ import binascii
 import threading
 import time
 import queue
+import logging
 
 class nfc_iso14443a_info(ctypes.Structure):
 	_pack_ = 1
@@ -19,6 +20,15 @@ class nfc_modulation(ctypes.Structure):
 class nfc_target(ctypes.Structure):
 	_fields_ = [("nti", nfc_target_info), ("nm", nfc_modulation)]
 
+
+class nfc_user_defined_device(ctypes.Structure):
+	_fields_ = [("name", ctypes.c_char*256), ("connstring", ctypes.c_char*1024), ("optional", ctypes.c_bool)]
+
+class nfc_context(ctypes.Structure):
+	_fields_ = [("allow_autoscan", ctypes.c_bool),("allow_intrusive_scan",ctypes.c_bool ),("log_level", ctypes.c_ulong),("user_defined_devices", nfc_user_defined_device*4),("user_defined_device_count", ctypes.c_uint)]
+
+
+
 class rfidReaderThread(threading.Thread):
 	def __init__(self, messageQueue):
 		threading.Thread.__init__(self)
@@ -28,9 +38,25 @@ class rfidReaderThread(threading.Thread):
 	def stop(self):
 		self._exit = True
 
+	def _openDevice(self):
+		context = ctypes.POINTER(nfc_context)()
+		self.nfc.nfc_init(ctypes.byref(context))
+		if not context:
+			raise Exception()
+		devices = ((ctypes.c_char*1024)*8)()
+		device_count = self.nfc.nfc_list_devices(context, devices, 8)
+		if device_count <= 0:
+			raise Exception()
+		for i in range(device_count):
+			self.device = self.nfc.nfc_open(context, devices[i])
+			if self.device:
+				break
+		if not self.device:
+			raise Exception()
+
 	def run(self):
-		self.nfc = ctypes.cdll.LoadLibrary(os.path.dirname(__file__)+"/libnfchelper.so")
-		self.device = self.nfc.openDevice()
+		self.nfc = ctypes.cdll.LoadLibrary("libnfc.so")
+		self._openDevice()
 		self.nfc.nfc_initiator_init(self.device)
 		self.nt = nfc_target()
 		while not self._exit:
@@ -39,10 +65,10 @@ class rfidReaderThread(threading.Thread):
 			nmModulations.nbr = 1
 			res = self.nfc.nfc_initiator_poll_target(self.device, ctypes.byref(nmModulations), 1, 1, 2, ctypes.byref(self.nt))
 			if res > 0:
-				print("----------------------")
+				logging.debug("----------------------")
 				uid = bytes(self.nt.nti.nai.abtUid[:self.nt.nti.nai.szUidLen])
-				print(uid)
-				print(binascii.hexlify(uid).decode('ascii'))
+				logging.debug(uid)
+				logging.debug(binascii.hexlify(uid).decode('ascii'))
 				self._queue.put(uid)
 				#Kurz warten, um Mehrfacherkennungen zu reduzieren
 				time.sleep(2)
@@ -50,7 +76,10 @@ class rfidReaderThread(threading.Thread):
 					pass
 
 if __name__ == '__main__':
-	t = rfidReaderThread()
+	logging.basicConfig(level=logging.DEBUG)
+	logging.debug("Launch Test Program")
+	q = queue.Queue()
+	t = rfidReaderThread(q)
 	t.start()
 	time.sleep(10)
 	t.stop()
