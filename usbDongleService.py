@@ -38,7 +38,9 @@ def device_event(device):
 			logging.debug(user)
 			logging.debug(user[0])
 			if user[0]:
-				logging.info("User {} authenticated, borrowing dongle {}".format(user[0], device.device_path))
+				logging.info("User {} authenticated, borrowing dongle {}".format(user[0].userName, device.device_path))
+				d.borrow(user[0])
+				#d.borrow("mli")
 			else:
 				logging.info("No user authenticated, removing dongle {0.device_path}".format(device))
 				d.remove()

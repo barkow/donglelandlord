@@ -17,6 +17,14 @@ configfile = "usbDongleLandlord.conf"
 config = configparser.ConfigParser()
 config.read(configfile)
 
+class rfidUser():
+	def __init__(self):
+		self.userName = None
+		self.surname = None
+		self.givenName = None
+		self.rfidCardUid = None
+		self.staffId = None
+
 class ifaicMitarbeiterlisteKompaktParser(html.parser.HTMLParser):
 		def __init__(self, personalnummer):
 			self.activeRow = False
@@ -159,6 +167,9 @@ class rfidIdentifierThread(threading.Thread):
 		self.rfidReader.join()
 
 	def getCardDetails(self, uid):
+		user = rfidUser()
+		user.rfidCardUid = binascii.hexlify(uid).decode('ascii')
+
 		#StaffId von ifaic mittels UID der Karte abfragen
 		logging.debug("request ifaic staff id")
 		req = urllib.request.Request(url=self._url+'cards/{}'.format(binascii.hexlify(uid).decode('ascii')), headers={"Content-Type":"application/json"})
@@ -167,7 +178,7 @@ class rfidIdentifierThread(threading.Thread):
 		resp =  urllib.request.urlopen(req)
 		body = resp.read()
 		data = json.loads(body.decode())
-		staffId = data['ikaFkaIdentStaffId']
+		user.staffId = data['ikaFkaIdentStaffId']
 		
 		#Aus StaffId und ifaic Mitarbeiterseite Vorname und Nachname herausfinden
 		#req = urllib.request.Request(url='https://ifaic.ika.rwth-aachen.de/info/mitarbeiterliste_komp.php')
@@ -178,12 +189,15 @@ class rfidIdentifierThread(threading.Thread):
 		logging.debug("parse response")
 		#Für schnelleres Parsen wird beim finden eines Ergebnis eine Exception geworfen
 		try:
-			parser = ifaicMitarbeiterlisteParser(staffId)
+			parser = ifaicMitarbeiterlisteParser(user.staffId)
 			parser.feed(body.decode('iso-8859-1'))
 		except:
 			logging.debug("parsed")
 			logging.debug(parser.userName)
-			return parser.userName
+			user.surname = parser.surname
+			user.givenName = parser.givenName
+			user.userName = parser.userName
+			return user
 		return None
 
 if __name__ == '__main__':

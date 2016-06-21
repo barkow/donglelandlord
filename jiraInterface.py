@@ -17,6 +17,7 @@ class jiraDongle():
 		self.jiraId = jiraId
 		self._jiraTransitIdRemove = 71
 		self._jiraTransitIdReturn = 81
+		self._jiraTransitIdBorrow = 61
 		self._jiraUser = config['JIRA']['apiuser']
 		self._jiraPassword = config['JIRA']['apipassword']
 		self._jiraUrl = config['JIRA']['apiurl']
@@ -39,21 +40,49 @@ class jiraDongle():
 		data = json.loads(body.decode())
 		return data['fields']['environment'].replace("USBADDRESS:","")
 
-	def _sendTransitionRequest(self, transitionId):
+	def _sendTransitionRequest(self, transitionId, additionalData=None):
 		try:
-			req = urllib.request.Request(url=self._jiraUrl+'issue/{}/transitions'.format(self.jiraId),  data = json.dumps({'transition': {'id': "{}".format(transitionId)}}).encode(), headers={"Content-Type":"application/json"})
+			data = {'transition': {'id': "{}".format(transitionId)}}
+			if additionalData:
+				data.update(additionalData)
+			logging.debug(json.dumps(data))
+			req = urllib.request.Request(url=self._jiraUrl+'issue/{}/transitions'.format(self.jiraId),  data = json.dumps(data).encode(), headers={"Content-Type":"application/json"})
 			userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
 			req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
 			resp =  urllib.request.urlopen(req)
 			body = resp.read()
 		except:
 			logging.error("Error changing Dongle {} with tranistion {}".format(self.jiraId, transitionId))
+			raise
+
+	def _sendComment(self, comment):
+		try:
+			data = {'body': comment}
+			logging.debug(json.dumps(data))
+			req = urllib.request.Request(url=self._jiraUrl+'issue/{}/comment'.format(self.jiraId),  data = json.dumps(data).encode(), headers={"Content-Type":"application/json"})
+			userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
+			req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
+			resp =  urllib.request.urlopen(req)
+			body = resp.read()
+		except:
+			logging.error("Error commenting Dongle {}".format(self.jiraId, transitionId))
+			raise
 
 	def remove(self):
 		self._sendTransitionRequest(self._jiraTransitIdRemove)
 
 	def retu(self):
 		self._sendTransitionRequest(self._jiraTransitIdReturn)
+
+	def borrow(self, user):
+		#self._sendTransitionRequest(self._jiraTransitIdBorrow, additionalData = {"fields": {"assignee": {"name": user}}})
+		try:
+			self._sendTransitionRequest(self._jiraTransitIdBorrow, additionalData = {"fields": {"assignee": {"name": user.userName}}})
+		except:
+			#if borrowing fail, the username for assingee might be wrong. Instead try borrowing dongle without assignee and keep additional information in comment
+			self._sendTransitionRequest(self._jiraTransitIdBorrow)
+			self._sendComment("Bearbeiter konnte nich automatisch geändert werden. Dongle wurde von {} - {} ({}) mit RFID Karte {} ausgeliehen.".format(user.staffId, "{} {}".format(user.givenName, user.surname), user.userName, user.rfidCardUid))
+
 
 class jiraServer():
 	def __init__(self):
