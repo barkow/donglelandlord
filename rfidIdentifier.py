@@ -202,17 +202,26 @@ class rfidIdentifierThread(threading.Thread):
 
 if __name__ == '__main__':
 	def userElapsedAction():
-		logging.debug("This is my user elapsed action")
+		logging.info("No valid user")
 
+	def userAction():
+		logging.info("Valid user detected")
+
+	#logging.basicConfig(level=logging.INFO)
 	logging.basicConfig(level=logging.DEBUG)
-	logging.debug("Launch Test Program")
-	r = rfidIdentifierThread(newUserElapsedAction = userElapsedAction)
+	logging.info("Launch Test Program")
+	r = rfidIdentifierThread(newUserAction = userAction, newUserElapsedAction = userElapsedAction)
 	r.start()
-	for i in (1,2,3):
-		user = r.getActiveUser()
-		print(user)
-		time.sleep(15)
-	print("stop 1")
+	stop = False
+	while not stop:
+		try:
+			user = r.getActiveUser()
+			if user[0]:
+				logging.info("{} -> {}".format(user[0].rfidCardUid, user[0].staffId))
+			time.sleep(2)
+		except KeyboardInterrupt:
+			logging.info("Stop signal detected")
+			stop = True
+	
 	r.stop()
-	print("wait stop 1")
 	r.join()
