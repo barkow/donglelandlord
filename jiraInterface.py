@@ -6,11 +6,16 @@ import base64
 import logging
 import configparser
 import sys
+import re
 
 configfile = "usbDongleLandlord.conf"
 
 config = configparser.ConfigParser()
 config.read(configfile)
+
+def init(conf):
+	global config
+	config = conf
 
 class jiraDongle():
 	def __init__(self, jiraId):
@@ -30,6 +35,15 @@ class jiraDongle():
 		body = resp.read()
 		data = json.loads(body.decode())
 		return data['fields']['status']['name']
+	
+	def getDescription(self):
+		req = urllib.request.Request(url=self._jiraUrl+'issue/{}'.format(self.jiraId), headers={"Content-Type":"application/json"})
+		userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
+		req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
+		resp =  urllib.request.urlopen(req)
+		body = resp.read()
+		data = json.loads(body.decode())
+		return data['fields']['summary']
 
 	def getUsbAddress(self):
 		req = urllib.request.Request(url=self._jiraUrl+'issue/{}?fields=environment'.format(self.jiraId), headers={"Content-Type":"application/json"})
@@ -38,7 +52,37 @@ class jiraDongle():
 		resp =  urllib.request.urlopen(req)
 		body = resp.read()
 		data = json.loads(body.decode())
-		return data['fields']['environment'].replace("USBADDRESS:","")
+		m = re.match(r"([\W\n\r\w]*)USBADDRESS:(?P<usbaddress>[0-9-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
+		if m:
+			return m.groupdict()['usbaddress']
+		else:
+			return ""
+			
+	def getUsbVid(self):
+		req = urllib.request.Request(url=self._jiraUrl+'issue/{}?fields=environment'.format(self.jiraId), headers={"Content-Type":"application/json"})
+		userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
+		req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
+		resp =  urllib.request.urlopen(req)
+		body = resp.read()
+		data = json.loads(body.decode())
+		m = re.match(r"([\W\n\r\w]*)VID:(?P<vid>[0-9-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
+		if m:
+			return m.groupdict()['vid']
+		else:
+			return ""
+			
+	def getUsbPid(self):
+		req = urllib.request.Request(url=self._jiraUrl+'issue/{}?fields=environment'.format(self.jiraId), headers={"Content-Type":"application/json"})
+		userAndPass = base64.b64encode("{}:{}".format(self._jiraUser, self._jiraPassword).encode()).decode("ascii")
+		req.add_header("Authorization", 'Basic {:s}'.format(userAndPass))
+		resp =  urllib.request.urlopen(req)
+		body = resp.read()
+		data = json.loads(body.decode())
+		m = re.match(r"([\W\n\r\w]*)PID:(?P<pid>[0-9-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
+		if m:
+			return m.groupdict()['pid']
+		else:
+			return ""
 
 	def _sendTransitionRequest(self, transitionId, additionalData=None):
 		try:
