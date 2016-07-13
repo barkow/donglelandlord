@@ -27,7 +27,13 @@ class nfc_user_defined_device(ctypes.Structure):
 class nfc_context(ctypes.Structure):
 	_fields_ = [("allow_autoscan", ctypes.c_bool),("allow_intrusive_scan",ctypes.c_bool ),("log_level", ctypes.c_ulong),("user_defined_devices", nfc_user_defined_device*4),("user_defined_device_count", ctypes.c_uint)]
 
-
+#Aus pn53x-internal.h
+PN53X_SFR_P3 = 0xFFB0
+P32 = 2
+P33 = 3
+PN53X_SFR_P7CFGA = 0xFFF4
+PN53X_SFR_P7CFGB = 0xFFF5
+PN53X_SFR_P7 = 0xFFF7
 
 class rfidReaderThread(threading.Thread):
 	def __init__(self, messageQueue):
@@ -53,6 +59,19 @@ class rfidReaderThread(threading.Thread):
 				break
 		if not self.device:
 			raise Exception()
+
+		self._initGpio71()
+
+	def _initGpio71(self):
+		#GPIO71 (MISO) als Ausgang konfigurieren
+		self.nfc.pn53x_write_register(self.device, PN53X_SFR_P7CFGB, 1 << 1, 0xff)
+
+
+	def setGpio71(self):
+		self.nfc.pn53x_write_register(self.device, PN53X_SFR_P7, 1 << 1, 0xff)
+
+	def clearGpio71(self):
+		self.nfc.pn53x_write_register(self.device, PN53X_SFR_P7, 1 << 1, 0x00)
 
 	def run(self):
 		self.nfc = ctypes.cdll.LoadLibrary("libnfc.so")
