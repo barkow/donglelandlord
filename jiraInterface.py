@@ -65,7 +65,7 @@ class jiraDongle():
 		resp =  urllib.request.urlopen(req)
 		body = resp.read()
 		data = json.loads(body.decode())
-		m = re.match(r"([\W\n\r\w]*)VID:(?P<vid>[0-9-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
+		m = re.match(r"([\W\n\r\w]*)VID:(?P<vid>[0-9A-Za-z-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
 		if m:
 			return m.groupdict()['vid']
 		else:
@@ -78,7 +78,7 @@ class jiraDongle():
 		resp =  urllib.request.urlopen(req)
 		body = resp.read()
 		data = json.loads(body.decode())
-		m = re.match(r"([\W\n\r\w]*)PID:(?P<pid>[0-9-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
+		m = re.match(r"([\W\n\r\w]*)PID:(?P<pid>[0-9A-Za-z-\.]+)([\W\n\r\w]*)", data['fields']['environment'])
 		if m:
 			return m.groupdict()['pid']
 		else:
